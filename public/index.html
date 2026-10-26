@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HR Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#162033;--mist:#eef1f6;--paper:#fff;--line:#d5dbe6;--muted:#5b667a;--brand:#2a5bd7;--tint:#e1e8f8;--ok:#1e7b5a;--no:#b3364a;--wait:#a86a0c;
+--display:'Bricolage Grotesque','Public Sans',system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:var(--mist);color:var(--ink);font:400 1rem/1.5 'Public Sans',system-ui,sans-serif}
+h1,h2,h3{font-family:var(--display);margin:0;line-height:1.15}
+[hidden]{display:none!important}
+:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+svg.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.i{fill:var(--ink)}.b{fill:var(--brand)}.w{fill:#fff}.y{fill:#f2c14e}.g{fill:var(--ok)}.l{fill:var(--line)}.t{fill:var(--tint)}
+.so{fill:none;stroke:var(--ink);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+
+/* sign in */
+.auth{min-height:100vh;display:grid;grid-template-columns:1.1fr 1fr}
+.auth-side{background:var(--ink);color:#fff;padding:3rem;display:flex;flex-direction:column;justify-content:space-between;gap:2rem}
+.auth-side h1{font-size:clamp(2.2rem,5vw,3.6rem);max-width:11ch}
+.auth-side p{color:#b9c3d6;max-width:32ch;margin:1rem 0 0}
+.stamps{display:flex;flex-wrap:wrap;gap:1.25rem}
+.auth-form{display:flex;align-items:center;justify-content:center;padding:2rem}
+.auth-form form{width:100%;max-width:340px}
+.auth-form h2{font-size:1.6rem;margin-bottom:1.5rem}
+
+/* stamp */
+.stamp{display:inline-block;font:700 .85rem/1 var(--display);letter-spacing:.08em;text-transform:uppercase;border:2px solid currentColor;border-radius:4px;padding:.35rem .6rem;transform:rotate(-6deg);white-space:nowrap}
+.stamp.pending{border-style:dashed}
+.s-ok{color:var(--ok)}.s-no{color:var(--no)}.s-wait{color:var(--wait)}
+.thump{animation:thump .35s cubic-bezier(.2,1.4,.4,1)}
+@keyframes thump{from{transform:rotate(-6deg) scale(1.9);opacity:0}to{transform:rotate(-6deg) scale(1);opacity:1}}
+
+/* shell: sidebar + main */
+.shell{display:grid;grid-template-columns:250px minmax(0,1fr);min-height:100vh}
+.side{background:var(--ink);color:#fff;padding:1.5rem 1rem;display:flex;flex-direction:column;gap:2rem;position:sticky;top:0;height:100vh}
+.brand{display:flex;align-items:center;gap:.7rem;font:700 1.25rem var(--display);padding:0 .5rem}
+.brand svg{width:34px;height:34px}
+#nav{display:flex;flex-direction:column;gap:.25rem}
+#nav button{display:flex;align-items:center;gap:.75rem;width:100%;padding:.7rem .75rem;border:0;border-radius:8px;background:none;color:#b9c3d6;font:500 .95rem 'Public Sans',sans-serif;cursor:pointer;text-align:left}
+#nav button:hover{background:#22304a;color:#fff}
+#nav button[aria-current=page]{background:#fff;color:var(--ink)}
+.me{margin-top:auto;display:flex;align-items:center;gap:.75rem;padding:.75rem;border-top:1px solid #2c3a55}
+.me div{min-width:0;flex:1}.me b{display:block;font-size:.9rem;overflow:hidden;text-overflow:ellipsis}.me span{font-size:.8rem;color:#b9c3d6}
+.me button{background:none;border:0;color:#b9c3d6;cursor:pointer;padding:.4rem;border-radius:6px}.me button:hover{color:#fff;background:#22304a}
+.main{padding:2rem clamp(1rem,3.5vw,3rem) 4rem;max-width:1150px;width:100%}
+
+.hero{display:flex;justify-content:space-between;align-items:center;gap:1.5rem;background:var(--tint);border-radius:16px;padding:1.5rem 2rem;margin-bottom:1.5rem}
+.hero h1{font-size:clamp(1.6rem,3vw,2.2rem)}.hero p{margin:.4rem 0 0;color:var(--muted);max-width:38ch}
+.hero svg{width:min(220px,34vw);height:auto;flex-shrink:0}
+.tally{display:flex;flex-wrap:wrap;gap:2rem;margin:0 0 2rem .5rem}
+.tally div{display:flex;align-items:center;gap:.9rem}
+.tally .num{font:700 2rem/1 var(--display)}
+
+.split{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:1.5rem;align-items:start}
+.split.flip{grid-template-columns:340px minmax(0,1fr)}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.ph{padding:1rem 1.25rem;border-bottom:1px solid var(--line)}
+.ph h2{font-size:1.15rem}.ph p{margin:.15rem 0 0;color:var(--muted);font-size:.9rem}
+.pb{padding:1.25rem}
+
+.row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:1rem;align-items:center;padding:1rem 1.25rem;border-top:1px solid var(--line)}
+.panel>.ph+.row,.panel>.ph+div>.row:first-child{border-top:0}
+.info b{display:block;overflow:hidden;text-overflow:ellipsis}
+.meta{display:block;color:var(--muted);font-size:.9rem;overflow-wrap:anywhere}
+.actions{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.av{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:#fff;font:700 1rem var(--display)}
+.c0{background:#2a5bd7}.c1{background:#1e7b5a}.c2{background:#8a5a0a}.c3{background:#8b3fa8}.c4{background:#b3364a}
+.av.ico{background:var(--tint);color:var(--brand)}
+.empty{text-align:center;padding:2.5rem 1rem;color:var(--muted)}
+.empty svg{width:120px;height:80px;margin-bottom:.5rem}
+
+/* forms */
+.field{margin-bottom:1rem}
+label{display:block;font-weight:600;font-size:.9rem;margin-bottom:.25rem}
+input{width:100%;padding:.65rem .75rem;border:1.5px solid var(--line);border-radius:8px;font:inherit;background:#fff;color:inherit}
+input:focus{border-color:var(--brand)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:1rem}.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}
+.count{min-height:1.5rem;margin:-.25rem 0 1rem;font-weight:600;color:var(--brand)}
+.btn{font:600 .9rem 'Public Sans',system-ui,sans-serif;padding:.6rem 1rem;border-radius:8px;border:1.5px solid transparent;cursor:pointer}
+.btn-primary{background:var(--brand);color:#fff}.btn-primary:hover{background:#1f49b0}
+.btn-ok{background:var(--ok);color:#fff}.btn-ok:hover{background:#17614a}
+.btn-no{background:transparent;color:var(--no);border-color:var(--no)}.btn-no:hover{background:#fbeff1}
+.btn-link{background:none;border:0;color:var(--no);font:500 .85rem 'Public Sans',sans-serif;text-decoration:underline;cursor:pointer;padding:.25rem}
+.full{width:100%}
+.toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:.7rem 1.1rem;border-radius:8px;max-width:90vw;z-index:9}
+.toast.err{background:var(--no)}
+
+@media(max-width:980px){.split,.split.flip{grid-template-columns:1fr}.split.flip>*:first-child{order:2}}
+@media(max-width:860px){
+ .auth{grid-template-columns:1fr}.auth-side{padding:2rem}
+ .shell{grid-template-columns:1fr}
+ .side{position:static;height:auto;flex-direction:row;align-items:center;flex-wrap:wrap;gap:.75rem;padding:.75rem 1rem}
+ #nav{flex-direction:row;order:3;width:100%}#nav button{justify-content:center}
+ .me{margin:0 0 0 auto;border:0;padding:0}.me div{display:none}
+ .hero svg{display:none}}
+@media(max-width:560px){.row{grid-template-columns:auto minmax(0,1fr)}.actions{grid-column:1/-1;justify-content:flex-start}.two{grid-template-columns:1fr}.tally{gap:1.25rem}}
+@media(prefers-reduced-motion:reduce){.thump{animation:none}}
+</style></head><body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+ <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M3 13l3-8h12l3 8v6H3zM3 13h5l1 3h6l1-3h5"/></symbol>
+ <symbol id="i-team" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-6 6.5-6s6.5 2.5 6.5 6"/><circle cx="17.5" cy="9" r="2.5"/><path d="M17 14c2.5.3 4.5 2.2 4.5 5"/></symbol>
+ <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+ <symbol id="i-out" viewBox="0 0 24 24"><path d="M10 4H5v16h5M15 8l4 4-4 4M19 12H9"/></symbol>
+ <symbol id="i-empty" viewBox="0 0 120 80"><rect x="30" y="12" width="60" height="58" rx="6" class="t"/><path d="M42 30h36M42 42h26M42 54h18" class="so"/><circle cx="88" cy="58" r="14" fill="#fff" stroke="#2a5bd7" stroke-width="2.5" stroke-dasharray="4 4"/><path d="M82 58l5 5 9-10" class="so" style="stroke:#1e7b5a"/></symbol>
+</defs></svg>
+
+<section id="authView" class="auth" hidden>
+  <div class="auth-side">
+    <div><h1>Every leave request, answered.</h1><p>Employees ask for time off. HR approves or rejects in one click.</p></div>
+    <div class="stamps" aria-hidden="true">
+      <span class="stamp s-ok" style="color:#5fd3a5">Approved</span>
+      <span class="stamp pending" style="color:#f2c14e">Pending</span>
+      <span class="stamp s-no" style="color:#ff8a9b">Rejected</span>
+    </div>
+  </div>
+  <div class="auth-form">
+    <form id="loginForm">
+      <h2>Sign in to HR Desk</h2>
+      <div class="field"><label for="email">Email</label><input id="email" type="email" autocomplete="username" value="admin@hr.com" required></div>
+      <div class="field"><label for="password">Password</label><input id="password" type="password" autocomplete="current-password" required></div>
+      <button class="btn btn-primary full" type="submit">Sign in</button>
+    </form>
+  </div>
+</section>
+
+<div id="appView" class="shell" hidden>
+  <aside class="side">
+    <div class="brand"><svg viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" class="b"/><path d="M9 18l5 5 11-12" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>HR Desk</div>
+    <nav id="nav" aria-label="Sections"></nav>
+    <div class="me"><div class="av c0" id="meAv"></div><div><b id="meName"></b><span id="meRole"></span></div>
+      <button onclick="logout()" aria-label="Sign out" title="Sign out"><svg class="ic"><use href="#i-out"/></svg></button></div>
+  </aside>
+
+  <main class="main">
+    <header class="hero"><div><h1 id="title"></h1><p id="lede"></p></div><div id="art" aria-hidden="true"></div></header>
+    <div class="tally" id="tally"></div>
+
+    <section id="paneRequests" hidden>
+      <div class="panel"><div class="ph"><h2>All requests</h2><p id="queueSub"></p></div><div id="queue"></div></div>
+    </section>
+
+    <section id="paneTeam" class="split" hidden>
+      <div class="panel"><div class="ph"><h2>Team members</h2><p id="empSub"></p></div><div id="emps"></div></div>
+      <form id="addForm" class="panel"><div class="ph"><h2>Add an employee</h2></div><div class="pb">
+        <div class="field"><label for="n">Full name</label><input id="n" required></div>
+        <div class="field"><label for="e">Work email</label><input id="e" type="email" required></div>
+        <div class="field"><label for="p">Temporary password</label><input id="p" required></div>
+        <div class="two"><div class="field"><label for="d">Job title</label><input id="d"></div>
+        <div class="field"><label for="s">Salary</label><input id="s" type="number" min="0"></div></div>
+        <button class="btn btn-primary full" type="submit">Add employee</button></div></form>
+    </section>
+
+    <section id="paneMine" class="split flip" hidden>
+      <form id="leaveForm" class="panel"><div class="ph"><h2>Request time off</h2></div><div class="pb">
+        <div class="two"><div class="field"><label for="from">First day</label><input id="from" type="date" required></div>
+        <div class="field"><label for="to">Last day</label><input id="to" type="date" required></div></div>
+        <p class="count" id="count" aria-live="polite"></p>
+        <div class="field"><label for="reason">Reason</label><input id="reason" required></div>
+        <button class="btn btn-primary full" type="submit">Send request</button></div></form>
+      <div class="panel"><div class="ph"><h2>Your requests</h2><p id="mySub"></p></div><div id="mine"></div></div>
+    </section>
+  </main>
+</div>
+<div id="toast" class="toast" role="status" hidden></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const S = { token: sessionStorage.getItem('token'), role: sessionStorage.getItem('role'),
+            email: sessionStorage.getItem('email'), tab: 'requests', stamped: null };
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+const dl = (s, y) => new Date(s.slice(0, 10) + 'T00:00:00Z')
+  .toLocaleDateString('en-GB', { day: 'numeric', month: 'short', ...(y ? { year: 'numeric' } : {}), timeZone: 'UTC' });
+const span = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5) + 1;
+const ico = n => `<svg class="ic" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+
+const ART = {
+ hr: `<svg viewBox="0 0 220 150"><rect x="38" y="28" width="104" height="104" rx="8" class="w so" transform="rotate(-7 90 80)"/>
+  <rect x="58" y="22" width="104" height="104" rx="8" class="w so"/><path d="M76 48h56M76 62h40M76 76h48" class="so" style="stroke:#d5dbe6"/>
+  <circle cx="146" cy="104" r="26" class="g"/><path d="M134 104l9 9 17-19" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="170" y="20" width="12" height="78" rx="6" class="y so" transform="rotate(28 176 59)"/></svg>`,
+ emp: `<svg viewBox="0 0 220 150"><circle cx="176" cy="34" r="18" class="y"/><path d="M176 6v8M176 54v8M148 34h8M196 34h8" class="so" style="stroke:#f2c14e"/>
+  <rect x="26" y="30" width="104" height="96" rx="10" class="w so"/><path d="M26 56h104" class="so"/><rect x="26" y="30" width="104" height="26" rx="10" class="b so"/>
+  <path d="M52 22v18M104 22v18" class="so"/><g class="l"><circle cx="52" cy="76" r="4"/><circle cx="78" cy="76" r="4"/><circle cx="104" cy="76" r="4"/><circle cx="52" cy="98" r="4"/><circle cx="104" cy="98" r="4"/></g>
+  <circle cx="78" cy="98" r="12" fill="none" stroke="#1e7b5a" stroke-width="3" stroke-dasharray="5 4"/>
+  <rect x="136" y="84" width="64" height="46" rx="8" class="b so"/><path d="M156 84v-10a6 6 0 016-6h12a6 6 0 016 6v10M136 104h64" class="so"/><rect x="162" y="99" width="12" height="10" rx="2" class="y so"/></svg>`
+};
+const empty = t => `<div class="empty"><svg viewBox="0 0 120 80" aria-hidden="true"><use href="#i-empty"/></svg><p>${t}</p></div>`;
+
+let tt;
+function toast(msg, err) {
+  const t = $('toast'); t.textContent = msg; t.className = 'toast' + (err ? ' err' : ''); t.hidden = false;
+  clearTimeout(tt); tt = setTimeout(() => t.hidden = true, 3200);
+}
+async function api(url, method = 'GET', body) {
+  const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + S.token },
+    body: body ? JSON.stringify(body) : undefined });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401) { logout(); throw new Error('Your session ended. Sign in again.'); }
+  if (!res.ok) throw new Error(data.message || 'Something went wrong. Try again.');
+  return data;
+}
+const stamp = l => {
+  const m = { APPROVED: ['s-ok', 'Approved'], REJECTED: ['s-no', 'Rejected'], PENDING: ['s-wait pending', 'Pending'] }[l.status];
+  return `<span class="stamp ${m[0]}${S.stamped === l.id ? ' thump' : ''}">${m[1]}</span>`;
+};
+const when = l => `${dl(l.fromDate)} to ${dl(l.toDate, true)}, ${plural(span(l.fromDate, l.toDate), 'day')}`;
+function tally(ls) {
+  const c = s => ls.filter(l => l.status === s).length;
+  $('tally').innerHTML = [['PENDING','s-wait pending','Pending'],['APPROVED','s-ok','Approved'],['REJECTED','s-no','Rejected']]
+    .map(([k, cls, t]) => `<div><span class="num">${c(k)}</span><span class="stamp ${cls}">${t}</span></div>`).join('');
+}
+
+/* sign in / out */
+$('loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  try {
+    const r = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: $('email').value, password: $('password').value }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.message === 'Invalid credentials' ? 'Email or password is incorrect.' : (d.message || 'Could not sign in.'));
+    S.token = d.token; S.role = d.role; S.email = $('email').value; S.tab = 'requests';
+    sessionStorage.setItem('token', S.token); sessionStorage.setItem('role', S.role); sessionStorage.setItem('email', S.email);
+    $('password').value = ''; render();
+  } catch (err) { toast(err.message === 'Failed to fetch' ? 'Cannot reach the server. Check that it is running.' : err.message, true); }
+});
+function logout() { sessionStorage.clear(); S.token = S.role = S.email = null; render(); }
+function go(tab) { S.tab = tab; render(); }
+
+/* HR */
+async function loadAdmin() {
+  const [emps, ls] = await Promise.all([api('/api/employees'), api('/api/leaves')]);
+  const name = Object.fromEntries(emps.map(x => [x.id, x.name]));
+  ls.sort((a, b) => (a.status === 'PENDING' ? 0 : 1) - (b.status === 'PENDING' ? 0 : 1) || b.id - a.id);
+  tally(ls);
+  const waiting = ls.filter(l => l.status === 'PENDING').length;
+  $('queueSub').textContent = ls.length ? (waiting ? `${waiting} waiting for your decision` : 'Nothing is waiting. You are all caught up.') : '';
+  $('queue').innerHTML = ls.length ? ls.map(l => { const n = name[l.employeeId] || 'Employee ' + l.employeeId; return `<div class="row">
+      <div class="av c${l.employeeId % 5}">${esc(n[0].toUpperCase())}</div>
+      <div class="info"><b>${esc(n)}</b><span class="meta">${when(l)}</span><span class="meta">${esc(l.reason)}</span></div>
+      <div class="actions">${l.status === 'PENDING'
+        ? `<button class="btn btn-ok" onclick="decide(${l.id},'APPROVED')">Approve</button><button class="btn btn-no" onclick="decide(${l.id},'REJECTED')">Reject</button>`
+        : stamp(l)}</div></div>`; }).join('')
+    : empty('No leave requests yet. They appear here when employees send them.');
+  $('empSub').textContent = emps.length === 1 ? '1 person on the team' : `${emps.length} people on the team`;
+  $('emps').innerHTML = emps.length ? emps.map(x => `<div class="row"><div class="av c${x.id % 5}">${esc(x.name[0].toUpperCase())}</div>
+      <div class="info"><b>${esc(x.name)}</b><span class="meta">${esc(x.designation || 'No job title')}${x.salary ? ', ' + esc(x.salary) : ''}</span></div>
+      <button class="btn-link" onclick="delEmp(${x.id}, ${esc(JSON.stringify(x.name))})">Remove</button></div>`).join('')
+    : empty('No employees yet. Add the first one.');
+}
+async function decide(id, status) {
+  try { await api('/api/leaves/' + id, 'PUT', { status }); S.stamped = id; await loadAdmin(); S.stamped = null;
+    toast(status === 'APPROVED' ? 'Leave approved' : 'Leave rejected'); } catch (e) { toast(e.message, true); }
+}
+async function delEmp(id, n) {
+  if (!confirm(`Remove ${n}? This cannot be undone.`)) return;
+  try { await api('/api/employees/' + id, 'DELETE'); toast('Employee removed'); loadAdmin(); } catch (e) { toast(e.message, true); }
+}
+$('addForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  try { await api('/api/employees', 'POST', { name: $('n').value, email: $('e').value, password: $('p').value,
+      designation: $('d').value, salary: parseFloat($('s').value) || null });
+    e.target.reset(); toast('Employee added'); loadAdmin(); } catch (err) { toast(err.message, true); }
+});
+
+/* Employee */
+async function loadEmp() {
+  const ls = (await api('/api/leaves')).sort((a, b) => b.id - a.id);
+  tally(ls);
+  $('mySub').textContent = ls.length ? plural(ls.length, 'request') : '';
+  $('mine').innerHTML = ls.length ? ls.map(l => `<div class="row"><div class="av ico">${ico('cal')}</div>
+    <div class="info"><b>${when(l)}</b><span class="meta">${esc(l.reason)}</span></div>${stamp(l)}</div>`).join('')
+    : empty('No requests yet. Use the form to ask for time off.');
+}
+function updateCount() {
+  const f = $('from').value, t = $('to').value, c = $('count');
+  if (!f || !t) { c.textContent = ''; return; }
+  const n = span(f, t); c.textContent = n < 1 ? 'The last day is before the first day.' : plural(n, 'day') + ' off';
+}
+$('from').addEventListener('input', updateCount); $('to').addEventListener('input', updateCount);
+$('leaveForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  try { await api('/api/leaves', 'POST', { fromDate: $('from').value, toDate: $('to').value, reason: $('reason').value });
+    e.target.reset(); updateCount(); toast('Request sent to HR'); loadEmp(); } catch (err) { toast(err.message, true); }
+});
+
+function render() {
+  const on = !!S.token;
+  $('authView').hidden = on; $('appView').hidden = !on;
+  if (!on) return;
+  const admin = S.role === 'ADMIN', first = (S.email || '').split('@')[0] || 'there';
+  const nm = admin ? 'HR team' : first[0].toUpperCase() + first.slice(1);
+  $('meName').textContent = nm; $('meRole').textContent = admin ? 'HR administrator' : 'Employee'; $('meAv').textContent = nm[0].toUpperCase();
+  const items = admin ? [['requests', 'inbox', 'Leave requests'], ['team', 'team', 'Team']] : [['mine', 'cal', 'My time off']];
+  if (!admin) S.tab = 'mine'; else if (S.tab === 'mine') S.tab = 'requests';
+  $('nav').innerHTML = items.map(([k, i, t]) => `<button ${S.tab === k ? 'aria-current="page"' : ''} onclick="go('${k}')">${ico(i)}${t}</button>`).join('');
+  $('paneRequests').hidden = S.tab !== 'requests'; $('paneTeam').hidden = S.tab !== 'team'; $('paneMine').hidden = S.tab !== 'mine';
+  const H = { requests: ['Leave requests', 'Review what is waiting and decide in one click.'],
+              team: ['Your team', 'Add people so they can sign in and request time off.'],
+              mine: ['Hello, ' + nm, 'Ask for time off and see the answer from HR here.'] }[S.tab];
+  $('title').textContent = H[0]; $('lede').textContent = H[1]; $('art').innerHTML = admin ? ART.hr : ART.emp;
+  (admin ? loadAdmin() : loadEmp()).catch(e => { if (S.token) toast(e.message, true); });
+}
+render();
+</script></body></html>
