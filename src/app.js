@@ -1,9 +1,9 @@
 require('dotenv').config();
 const express = require('express');
 const bcrypt = require('bcrypt');
-const { PrismaClient } = require('@prisma/client');
+const { Prisma, PrismaClient } = require('@prisma/client');
 const { authenticate, authorize, sign } = require('./auth');
-const { leaveDays } = require('./utils');
+const { leaveDays, utcToday } = require('./utils');
 const prisma = new PrismaClient();
 const app = express();
 app.use(express.json());
@@ -54,6 +54,32 @@ app.put('/api/leaves/:id', authenticate, authorize('ADMIN'), async (req, res) =>
   const { status } = req.body;
   if (!['APPROVED', 'REJECTED'].includes(status)) return res.status(400).json({ message: 'Bad status' });
   res.json(await prisma.leave.update({ where: { id: +req.params.id }, data: { status } }));
+});
+
+// Attendance
+app.post('/api/attendance', authenticate, authorize('EMPLOYEE'), async (req, res, next) => {
+  try {
+    const emp = await prisma.employee.findUnique({ where: { userId: req.user.id } });
+    if (!emp) return res.status(404).json({ message: 'Employee profile not found' });
+    const attendance = await prisma.attendance.create({
+      data: { employeeId: emp.id, date: utcToday() },
+      include: { employee: { select: { name: true } } }
+    });
+    res.status(201).json(attendance);
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002')
+      return res.status(409).json({ message: 'Attendance has already been marked for today' });
+    next(err);
+  }
+});
+
+app.get('/api/attendance', authenticate, async (req, res) => {
+  const where = req.user.role === 'ADMIN' ? {} : { employee: { userId: req.user.id } };
+  res.json(await prisma.attendance.findMany({
+    where,
+    include: { employee: { select: { name: true } } },
+    orderBy: [{ date: 'desc' }, { markedAt: 'desc' }]
+  }));
 });
 
 module.exports = app;
