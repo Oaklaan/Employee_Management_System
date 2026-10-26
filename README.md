@@ -1,6 +1,8 @@
 # Employee & Leave Management System (PBL - Project Management & Planning)
 
-![Leave request workflow: employees ask for time off and HR approves or rejects requests](public/leave-requests.png)
+<p align="center">
+  <img src="public/banner.png" alt="HR Portal - Employee and Leave Management System" width="100%">
+</p>
 
 **Stack:** Node.js, Express, PostgreSQL, Prisma ORM, JWT + bcrypt, Jest, GitHub Actions CI
 
