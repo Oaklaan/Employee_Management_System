@@ -10,8 +10,8 @@ A small HR system with two portals:
 
 | Portal | User | What they can do |
 |---|---|---|
-| **HR Portal** | ADMIN | Add and delete employees, view all leave requests, approve or reject leaves, monitor daily attendance |
-| **Employee Portal** | EMPLOYEE | Apply for leave, track the status of their own requests, mark daily attendance |
+| **HR Portal** | ADMIN | Add and delete employees, view all leave requests, approve or reject leaves, monitor daily attendance, assign and track tasks |
+| **Employee Portal** | EMPLOYEE | Apply for leave, track the status of their own requests, mark daily attendance, update assigned task status |
 
 **Technology stack**
 
@@ -20,7 +20,7 @@ A small HR system with two portals:
 | Frontend | HTML, Bootstrap 5, vanilla JavaScript (`public/index.html`) | Single-page UI for both portals |
 | Backend | Node.js + Express | REST API and static file server |
 | ORM | Prisma | Talks to the database without raw SQL |
-| Database | PostgreSQL | Stores users, employees, leaves and attendance |
+| Database | PostgreSQL | Stores users, employees, leaves, attendance and tasks |
 | Authentication | JWT + bcrypt | Stateless login and password hashing |
 | Testing | Jest | Automated unit tests |
 | CI/CD | GitHub Actions | Runs the tests on every push |
@@ -51,7 +51,7 @@ A small HR system with two portals:
                ▼
 ┌──────────────────────────────┐
 │        POSTGRESQL (hr_db)    │
-│ User · Employee · Leave · Attendance │
+│ User · Employee · Leave · Attendance · Task │
 └──────────────────────────────┘
 ```
 
@@ -100,6 +100,7 @@ PROJECT-PLANNING-MANAGEMENT/
 - **Employee** holds HR details and is linked one-to-one to a User.
 - **Leave** belongs to one Employee. Status is `PENDING`, `APPROVED` or `REJECTED`.
 - **Attendance** belongs to one Employee, stores the UTC calendar date and marked time, and permits one record per employee per day.
+- **Task** belongs to one Employee and stores its description, optional due date, status and timestamps.
 
 Login data (User) is kept separate from HR data (Employee), so personal details can change without touching authentication.
 
@@ -165,6 +166,12 @@ flowchart TD
 3. HR sees every employee's current status in the attendance page, which refreshes automatically every 30 seconds.
 4. Employees can review their own attendance history.
 
+### 4.6 Task assignment and completion
+
+1. HR assigns a task to an employee, optionally adding a description and due date.
+2. Employees see their assigned tasks and can update status to `IN_PROGRESS` or `COMPLETED`.
+3. HR sees task status and assignee; the task list refreshes automatically every 30 seconds.
+
 ---
 
 ## 5. API reference
@@ -181,6 +188,9 @@ flowchart TD
 | PUT | `/api/leaves/:id` | ADMIN | Approve or reject a leave |
 | POST | `/api/attendance` | EMPLOYEE | Mark attendance for today once |
 | GET | `/api/attendance` | ADMIN (all), EMPLOYEE (own) | View attendance records |
+| POST | `/api/tasks` | ADMIN | Assign a task to an employee |
+| GET | `/api/tasks` | ADMIN (all), EMPLOYEE (own) | View tasks |
+| PUT | `/api/tasks/:id` | EMPLOYEE | Update own task to `IN_PROGRESS` or `COMPLETED` |
 
 ---
 

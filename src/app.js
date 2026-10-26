@@ -82,4 +82,68 @@ app.get('/api/attendance', authenticate, async (req, res) => {
   }));
 });
 
+// Tasks
+app.post('/api/tasks', authenticate, authorize('ADMIN'), async (req, res, next) => {
+  const { title, description, employeeId, dueDate } = req.body || {};
+  if (typeof title !== 'string' || !title.trim())
+    return res.status(400).json({ message: 'Task title is required' });
+  if (!Number.isInteger(employeeId) || employeeId < 1)
+    return res.status(400).json({ message: 'A valid employee is required' });
+  if (description !== undefined && description !== null && typeof description !== 'string')
+    return res.status(400).json({ message: 'Task description must be text' });
+  let parsedDueDate;
+  if (dueDate) {
+    if (typeof dueDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dueDate))
+      return res.status(400).json({ message: 'Due date must be a valid date' });
+    parsedDueDate = new Date(`${dueDate}T00:00:00.000Z`);
+    if (Number.isNaN(parsedDueDate.getTime()) || parsedDueDate.toISOString().slice(0, 10) !== dueDate)
+      return res.status(400).json({ message: 'Due date must be a valid date' });
+  }
+  try {
+    const employee = await prisma.employee.findUnique({ where: { id: employeeId } });
+    if (!employee) return res.status(404).json({ message: 'Employee not found' });
+    const task = await prisma.task.create({
+      data: {
+        employeeId,
+        title: title.trim(),
+        description: description?.trim() || null,
+        dueDate: parsedDueDate
+      },
+      include: { employee: { select: { name: true } } }
+    });
+    res.status(201).json(task);
+  } catch (err) { next(err); }
+});
+
+app.get('/api/tasks', authenticate, async (req, res, next) => {
+  try {
+    const where = req.user.role === 'ADMIN' ? {} : { employee: { userId: req.user.id } };
+    res.json(await prisma.task.findMany({
+      where,
+      include: { employee: { select: { name: true } } },
+      orderBy: [{ status: 'asc' }, { dueDate: 'asc' }, { createdAt: 'desc' }]
+    }));
+  } catch (err) { next(err); }
+});
+
+app.put('/api/tasks/:id', authenticate, authorize('EMPLOYEE'), async (req, res, next) => {
+  const { status } = req.body || {};
+  if (!['IN_PROGRESS', 'COMPLETED'].includes(status))
+    return res.status(400).json({ message: 'Status must be IN_PROGRESS or COMPLETED' });
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1)
+    return res.status(400).json({ message: 'Invalid task id' });
+  try {
+    const result = await prisma.task.updateMany({
+      where: { id, employee: { userId: req.user.id } },
+      data: { status }
+    });
+    if (!result.count) return res.status(404).json({ message: 'Task not found' });
+    res.json(await prisma.task.findUnique({
+      where: { id },
+      include: { employee: { select: { name: true } } }
+    }));
+  } catch (err) { next(err); }
+});
+
 module.exports = app;
