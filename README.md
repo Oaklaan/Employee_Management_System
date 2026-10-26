@@ -20,8 +20,11 @@
 | PUT | /api/leaves/:id  {status: APPROVED/REJECTED} | ADMIN |
 | POST | /api/attendance | EMPLOYEE (mark today's attendance once) |
 | GET | /api/attendance | ADMIN (all) / EMPLOYEE (own) |
+| POST | /api/tasks | ADMIN (assign task) |
+| GET | /api/tasks | ADMIN (all) / EMPLOYEE (own) |
+| PUT | /api/tasks/:id | EMPLOYEE (update own task to IN_PROGRESS or COMPLETED) |
 
-After pulling the attendance feature, apply the new database migration with `npx prisma migrate dev`.
+After pulling new features, apply pending database migrations with `npx prisma migrate dev`.
 
 ## Syllabus mapping
 - Unit III: CI/CD (`.github/workflows/ci.yml`), continuous testing (Jest)

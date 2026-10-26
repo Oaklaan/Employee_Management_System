@@ -75,8 +75,8 @@ svg.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;str
 /* forms */
 .field{margin-bottom:1rem}
 label{display:block;font-weight:600;font-size:.9rem;margin-bottom:.25rem}
-input{width:100%;padding:.65rem .75rem;border:1.5px solid var(--line);border-radius:8px;font:inherit;background:#fff;color:inherit}
-input:focus{border-color:var(--brand)}
+input,select{width:100%;padding:.65rem .75rem;border:1.5px solid var(--line);border-radius:8px;font:inherit;background:#fff;color:inherit}
+input:focus,select:focus{border-color:var(--brand)}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:1rem}.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}
 .count{min-height:1.5rem;margin:-.25rem 0 1rem;font-weight:600;color:var(--brand)}
 .btn{font:600 .9rem 'Public Sans',system-ui,sans-serif;padding:.6rem 1rem;border-radius:8px;border:1.5px solid transparent;cursor:pointer}
@@ -151,6 +151,21 @@ input:focus{border-color:var(--brand)}
       </div>
     </section>
 
+    <section id="paneTasks" class="split" hidden>
+      <div class="panel"><div class="ph attendance-head"><div><h2>Assigned tasks</h2><p id="taskSub"></p></div>
+        <button class="btn btn-primary" type="button" onclick="refreshAdminTasks().catch(e => toast(e.message, true))">Refresh</button></div><div id="taskRows"></div></div>
+      <form id="taskForm" class="panel"><div class="ph"><h2>Assign a task</h2></div><div class="pb">
+        <div class="field"><label for="taskTitle">Task title</label><input id="taskTitle" maxlength="200" required></div>
+        <div class="field"><label for="taskDescription">Description</label><input id="taskDescription"></div>
+        <div class="field"><label for="assignTo">Assign to</label><select id="assignTo" required></select></div>
+        <div class="field"><label for="taskDueDate">Due date (optional)</label><input id="taskDueDate" type="date"></div>
+        <button class="btn btn-primary full" type="submit">Assign task</button></div></form>
+    </section>
+
+    <section id="paneTasksMine" hidden>
+      <div class="panel"><div class="ph"><h2>Your assigned tasks</h2><p id="myTaskSub"></p></div><div id="myTaskRows"></div></div>
+    </section>
+
     <section id="paneTeam" class="split" hidden>
       <div class="panel"><div class="ph"><h2>Team members</h2><p id="empSub"></p></div><div id="emps"></div></div>
       <form id="addForm" class="panel"><div class="ph"><h2>Add an employee</h2></div><div class="pb">
@@ -194,6 +209,15 @@ const dl = (s, y) => new Date(s.slice(0, 10) + 'T00:00:00Z')
 const attendanceTime = s => new Date(s).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
 const span = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5) + 1;
 const ico = n => `<svg class="ic" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+const taskStatus = status => ({
+  TODO: ['s-wait pending', 'To do'],
+  IN_PROGRESS: ['s-wait', 'In progress'],
+  COMPLETED: ['s-ok', 'Completed']
+})[status] || ['s-wait pending', 'To do'];
+const taskStamp = status => {
+  const [cls, label] = taskStatus(status);
+  return `<span class="stamp ${cls}">${label}</span>`;
+};
 
 const ART = {
  hr: `<svg viewBox="0 0 220 150"><rect x="38" y="28" width="104" height="104" rx="8" class="w so" transform="rotate(-7 90 80)"/>
@@ -296,6 +320,56 @@ async function loadEmployeeAttendance() {
     <span class="meta">Marked at ${esc(attendanceTime(record.markedAt))}</span></div><span class="stamp s-ok">Present</span></div>`).join('')
     : empty('Your marked attendance will appear here.');
 }
+async function loadAdminTasks() {
+  const [emps, tasks] = await Promise.all([api('/api/employees'), api('/api/tasks')]);
+  const selectedEmployee = $('assignTo').value;
+  $('assignTo').innerHTML = emps.length
+    ? emps.map(emp => `<option value="${emp.id}">${esc(emp.name)}</option>`).join('')
+    : '<option value="">Add an employee first</option>';
+  if (emps.some(emp => String(emp.id) === selectedEmployee)) $('assignTo').value = selectedEmployee;
+  $('assignTo').disabled = !emps.length;
+  renderAdminTasks(tasks, emps.length);
+}
+async function refreshAdminTasks() {
+  renderAdminTasks(await api('/api/tasks'));
+}
+function renderAdminTasks(tasks, employeeCount) {
+  $('taskSub').textContent = `${tasks.length ? plural(tasks.length, 'task assigned') : 'No tasks assigned yet'} · updates automatically`;
+  $('taskRows').innerHTML = tasks.length ? tasks.map(task => {
+    const [statusClass, statusLabel] = taskStatus(task.status);
+    return `<div class="row"><div class="av c${task.employeeId % 5}">${esc(task.employee.name[0].toUpperCase())}</div>
+      <div class="info"><b>${esc(task.title)}</b><span class="meta">Assigned to ${esc(task.employee.name)}${task.dueDate ? ` · Due ${dl(String(task.dueDate), true)}` : ''}</span>
+      ${task.description ? `<span class="meta">${esc(task.description)}</span>` : ''}</div>
+      <span class="stamp ${statusClass}">${statusLabel}</span></div>`;
+  }).join('') : empty(employeeCount === 0 ? 'Add an employee before assigning tasks.' : 'Assign a task using the form.');
+}
+async function loadEmployeeTasks() {
+  const tasks = await api('/api/tasks');
+  const counts = tasks.reduce((all, task) => {
+    all[task.status] = (all[task.status] || 0) + 1;
+    return all;
+  }, {});
+  $('myTaskSub').textContent = tasks.length
+    ? `${counts.TODO || 0} to do · ${counts.IN_PROGRESS || 0} in progress · ${counts.COMPLETED || 0} completed`
+    : 'No tasks assigned yet';
+  $('myTaskRows').innerHTML = tasks.length ? tasks.map(task => `<div class="row">
+    <div class="av ico">${ico('inbox')}</div><div class="info"><b>${esc(task.title)}</b>
+    ${task.dueDate ? `<span class="meta">Due ${dl(String(task.dueDate), true)}</span>` : ''}
+    ${task.description ? `<span class="meta">${esc(task.description)}</span>` : ''}</div>
+    <div class="actions">${task.status === 'TODO'
+      ? `<button class="btn btn-primary" onclick="updateTask(${task.id},'IN_PROGRESS')">Start</button><button class="btn btn-ok" onclick="updateTask(${task.id},'COMPLETED')">Complete</button>`
+      : task.status === 'IN_PROGRESS'
+        ? `<button class="btn btn-ok" onclick="updateTask(${task.id},'COMPLETED')">Complete</button>`
+        : taskStamp(task.status)}</div></div>`).join('')
+    : empty('Tasks assigned by HR will appear here.');
+}
+async function updateTask(id, status) {
+  try {
+    await api('/api/tasks/' + id, 'PUT', { status });
+    await loadEmployeeTasks();
+    toast(status === 'COMPLETED' ? 'Task marked completed' : 'Task started');
+  } catch (err) { toast(err.message, true); }
+}
 async function decide(id, status) {
   try { await api('/api/leaves/' + id, 'PUT', { status }); S.stamped = id; await loadAdmin(); S.stamped = null;
     toast(status === 'APPROVED' ? 'Leave approved' : 'Leave rejected'); } catch (e) { toast(e.message, true); }
@@ -309,6 +383,20 @@ $('addForm').addEventListener('submit', async e => {
   try { await api('/api/employees', 'POST', { name: $('n').value, email: $('e').value, password: $('p').value,
       designation: $('d').value, salary: parseFloat($('s').value) || null });
     e.target.reset(); toast('Employee added'); loadAdmin(); } catch (err) { toast(err.message, true); }
+});
+$('taskForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  try {
+    await api('/api/tasks', 'POST', {
+      title: $('taskTitle').value,
+      description: $('taskDescription').value,
+      employeeId: Number($('assignTo').value),
+      dueDate: $('taskDueDate').value || undefined
+    });
+    e.target.reset();
+    toast('Task assigned');
+    await refreshAdminTasks();
+  } catch (err) { toast(err.message, true); }
 });
 
 /* Employee */
@@ -339,9 +427,9 @@ $('markAttendance').addEventListener('click', async () => {
   } catch (err) { toast(err.message, true); }
 });
 
-let attendanceRefresh;
+let portalRefresh;
 function render() {
-  clearInterval(attendanceRefresh);
+  clearInterval(portalRefresh);
   const on = !!S.token;
   $('authView').hidden = on; $('appView').hidden = !on;
   if (!on) return;
@@ -349,26 +437,34 @@ function render() {
   const nm = admin ? 'HR team' : first[0].toUpperCase() + first.slice(1);
   $('meName').textContent = nm; $('meRole').textContent = admin ? 'HR administrator' : 'Employee'; $('meAv').textContent = nm[0].toUpperCase();
   const items = admin
-    ? [['requests', 'inbox', 'Leave requests'], ['attendance', 'cal', 'Attendance'], ['team', 'team', 'Team']]
-    : [['mine', 'cal', 'My time off'], ['attendance', 'cal', 'Attendance']];
-  if (!admin && S.tab !== 'attendance') S.tab = 'mine';
-  else if (admin && !['requests', 'attendance', 'team'].includes(S.tab)) S.tab = 'requests';
+    ? [['requests', 'inbox', 'Leave requests'], ['attendance', 'cal', 'Attendance'], ['tasks', 'inbox', 'Tasks'], ['team', 'team', 'Team']]
+    : [['mine', 'cal', 'My time off'], ['attendance', 'cal', 'Attendance'], ['tasks', 'inbox', 'My tasks']];
+  if (!admin && !['attendance', 'tasks'].includes(S.tab)) S.tab = 'mine';
+  else if (admin && !['requests', 'attendance', 'tasks', 'team'].includes(S.tab)) S.tab = 'requests';
   $('nav').innerHTML = items.map(([k, i, t]) => `<button ${S.tab === k ? 'aria-current="page"' : ''} onclick="go('${k}')">${ico(i)}${t}</button>`).join('');
   $('paneRequests').hidden = S.tab !== 'requests'; $('paneTeam').hidden = S.tab !== 'team';
   $('paneMine').hidden = S.tab !== 'mine'; $('paneAttendance').hidden = admin ? S.tab !== 'attendance' : true;
   $('paneAttendanceMine').hidden = admin || S.tab !== 'attendance';
+  $('paneTasks').hidden = !admin || S.tab !== 'tasks'; $('paneTasksMine').hidden = admin || S.tab !== 'tasks';
   const H = { requests: ['Leave requests', 'Review what is waiting and decide in one click.'],
               attendance: ['Attendance', admin ? 'See which employees have marked attendance today.' : 'Mark your attendance and review your history.'],
+              tasks: ['Tasks', admin ? 'Assign work to employees and follow progress.' : 'View your tasks and update their status.'],
               team: ['Your team', 'Add people so they can sign in and request time off.'],
               mine: ['Hello, ' + nm, 'Ask for time off and see the answer from HR here.'] }[S.tab];
   $('title').textContent = H[0]; $('lede').textContent = H[1]; $('art').innerHTML = admin ? ART.hr : ART.emp;
-  const load = admin ? loadAdmin() : S.tab === 'attendance' ? loadEmployeeAttendance() : loadEmp();
+  const load = admin
+    ? S.tab === 'attendance' ? loadAttendance() : S.tab === 'tasks' ? loadAdminTasks() : loadAdmin()
+    : S.tab === 'attendance' ? loadEmployeeAttendance() : S.tab === 'tasks' ? loadEmployeeTasks() : loadEmp();
   load.catch(e => { if (S.token) toast(e.message, true); });
   if (admin && S.tab === 'attendance') {
-    loadAttendance().catch(e => { if (S.token) toast(e.message, true); });
-    attendanceRefresh = setInterval(() => {
+    portalRefresh = setInterval(() => {
       if (S.token && S.role === 'ADMIN' && S.tab === 'attendance')
         loadAttendance().catch(e => toast(e.message, true));
+    }, 30000);
+  } else if (admin && S.tab === 'tasks') {
+    portalRefresh = setInterval(() => {
+      if (S.token && S.role === 'ADMIN' && S.tab === 'tasks')
+        refreshAdminTasks().catch(e => toast(e.message, true));
     }, 30000);
   }
 }
