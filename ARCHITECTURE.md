@@ -10,8 +10,8 @@ A small HR system with two portals:
 
 | Portal | User | What they can do |
 |---|---|---|
-| **HR Portal** | ADMIN | Add and delete employees, view all leave requests, approve or reject leaves |
-| **Employee Portal** | EMPLOYEE | Apply for leave, track the status of their own requests |
+| **HR Portal** | ADMIN | Add and delete employees, view all leave requests, approve or reject leaves, monitor daily attendance |
+| **Employee Portal** | EMPLOYEE | Apply for leave, track the status of their own requests, mark daily attendance |
 
 **Technology stack**
 
@@ -20,7 +20,7 @@ A small HR system with two portals:
 | Frontend | HTML, Bootstrap 5, vanilla JavaScript (`public/index.html`) | Single-page UI for both portals |
 | Backend | Node.js + Express | REST API and static file server |
 | ORM | Prisma | Talks to the database without raw SQL |
-| Database | PostgreSQL | Stores users, employees and leaves |
+| Database | PostgreSQL | Stores users, employees, leaves and attendance |
 | Authentication | JWT + bcrypt | Stateless login and password hashing |
 | Testing | Jest | Automated unit tests |
 | CI/CD | GitHub Actions | Runs the tests on every push |
@@ -51,7 +51,7 @@ A small HR system with two portals:
                ▼
 ┌──────────────────────────────┐
 │        POSTGRESQL (hr_db)    │
-│   User · Employee · Leave    │
+│ User · Employee · Leave · Attendance │
 └──────────────────────────────┘
 ```
 
@@ -69,10 +69,10 @@ PROJECT-PLANNING-MANAGEMENT/
 │   ├── server.js           Starts the server (reads PORT)
 │   ├── app.js              Express app, middleware and routes
 │   ├── auth.js             JWT sign, authenticate, authorize
-│   ├── utils.js            leaveDays() helper
+│   ├── utils.js            leaveDays() and UTC date helpers
 │   └── seed.js             Creates the first admin account
 ├── tests/
-│   └── basic.test.js       Jest tests (6)
+│   └── basic.test.js       Jest tests
 ├── .github/workflows/
 │   └── ci.yml              GitHub Actions pipeline
 ├── .env                    DATABASE_URL, JWT_SECRET, PORT (never committed)
@@ -99,6 +99,7 @@ PROJECT-PLANNING-MANAGEMENT/
 - **User** holds login credentials and the role (`ADMIN` or `EMPLOYEE`).
 - **Employee** holds HR details and is linked one-to-one to a User.
 - **Leave** belongs to one Employee. Status is `PENDING`, `APPROVED` or `REJECTED`.
+- **Attendance** belongs to one Employee, stores the UTC calendar date and marked time, and permits one record per employee per day.
 
 Login data (User) is kept separate from HR data (Employee), so personal details can change without touching authentication.
 
@@ -157,6 +158,13 @@ flowchart TD
 3. A `User` and its linked `Employee` are created together in one database operation.
 4. The new employee can log in immediately.
 
+### 4.5 Daily attendance
+
+1. An employee marks attendance from their portal; the server records the current UTC date.
+2. A unique employee/date constraint prevents duplicate marks on the same day.
+3. HR sees every employee's current status in the attendance page, which refreshes automatically every 30 seconds.
+4. Employees can review their own attendance history.
+
 ---
 
 ## 5. API reference
@@ -171,6 +179,8 @@ flowchart TD
 | POST | `/api/leaves` | EMPLOYEE | Apply for leave |
 | GET | `/api/leaves` | ADMIN (all), EMPLOYEE (own) | View leaves |
 | PUT | `/api/leaves/:id` | ADMIN | Approve or reject a leave |
+| POST | `/api/attendance` | EMPLOYEE | Mark attendance for today once |
+| GET | `/api/attendance` | ADMIN (all), EMPLOYEE (own) | View attendance records |
 
 ---
 
@@ -196,7 +206,7 @@ flowchart LR
     B --> C[GitHub Actions starts]
     C --> D[npm install]
     D --> E[prisma generate]
-    E --> F[npm test: 6 Jest tests]
+    E --> F[npm test]
     F -- Pass --> G[Build is green]
     F -- Fail --> H[Developer fixes the bug]
 ```
@@ -242,7 +252,7 @@ The pipeline gives **continuous integration** and **continuous testing**. A brok
 |---|---|
 | No input validation on request bodies | Add a validation library such as Zod or Joi |
 | No global error handler; a database error can crash the server | Add Express error middleware and try/catch around handlers |
-| No departments or attendance modules | Add `Department` and `Attendance` models and routes |
+| No departments | Add a `Department` model and department management |
 | Token stored in `sessionStorage` | Move to httpOnly cookies for stronger XSS protection |
 | Admin cannot edit an employee | Add `PUT /api/employees/:id` |
 | Leave overlap and balance not checked | Add leave balance and overlap rules |
@@ -260,7 +270,7 @@ npm install
 npx prisma migrate dev --name init
 npm run seed            # creates admin@hr.com / admin123
 npm start               # open http://localhost:PORT
-npm test                # runs the 6 Jest tests
+npm test                # runs the Jest tests
 ```
 
 Required `.env` values:

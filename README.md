@@ -18,10 +18,13 @@
 | POST | /api/leaves | EMPLOYEE |
 | GET | /api/leaves | ADMIN (all) / EMPLOYEE (own) |
 | PUT | /api/leaves/:id  {status: APPROVED/REJECTED} | ADMIN |
+| POST | /api/attendance | EMPLOYEE (mark today's attendance once) |
+| GET | /api/attendance | ADMIN (all) / EMPLOYEE (own) |
+
+After pulling the attendance feature, apply the new database migration with `npx prisma migrate dev`.
 
 ## Syllabus mapping
 - Unit III: CI/CD (`.github/workflows/ci.yml`), continuous testing (Jest)
 - Unit IV: Git branching/configuration management, Scrum board on GitHub Projects
 - Unit V: tests in `tests/`, defect log, maintenance plan
 - Unit I, II, VI: documents in the report (CPM, PERT, COCOMO II, risks, closure)
-

@@ -58,6 +58,7 @@ svg.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;str
 .panel{background:var(--paper);border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .ph{padding:1rem 1.25rem;border-bottom:1px solid var(--line)}
 .ph h2{font-size:1.15rem}.ph p{margin:.15rem 0 0;color:var(--muted);font-size:.9rem}
+.attendance-head{display:flex;align-items:center;justify-content:space-between;gap:1rem}
 .pb{padding:1.25rem}
 
 .row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:1rem;align-items:center;padding:1rem 1.25rem;border-top:1px solid var(--line)}
@@ -142,6 +143,14 @@ input:focus{border-color:var(--brand)}
       <div class="panel"><div class="ph"><h2>All requests</h2><p id="queueSub"></p></div><div id="queue"></div></div>
     </section>
 
+    <section id="paneAttendance" hidden>
+      <div class="panel">
+        <div class="ph attendance-head"><div><h2>Today's attendance</h2><p id="attendanceSub"></p></div>
+          <button class="btn btn-primary" type="button" onclick="loadAttendance().catch(e => toast(e.message, true))">Refresh</button></div>
+        <div id="attendanceRows"></div>
+      </div>
+    </section>
+
     <section id="paneTeam" class="split" hidden>
       <div class="panel"><div class="ph"><h2>Team members</h2><p id="empSub"></p></div><div id="emps"></div></div>
       <form id="addForm" class="panel"><div class="ph"><h2>Add an employee</h2></div><div class="pb">
@@ -161,6 +170,14 @@ input:focus{border-color:var(--brand)}
         <div class="field"><label for="reason">Reason</label><input id="reason" required></div>
         <button class="btn btn-primary full" type="submit">Send request</button></div></form>
       <div class="panel"><div class="ph"><h2>Your requests</h2><p id="mySub"></p></div><div id="mine"></div></div>
+    </section>
+
+    <section id="paneAttendanceMine" class="split flip" hidden>
+      <div class="panel"><div class="ph"><h2>Mark today's attendance</h2><p id="attendanceToday"></p></div>
+        <div class="pb"><p>Mark yourself present for today. You can submit once per day.</p>
+          <button id="markAttendance" class="btn btn-primary full" type="button">Mark attendance</button></div>
+      </div>
+      <div class="panel"><div class="ph"><h2>Your attendance history</h2><p id="attendanceHistorySub"></p></div><div id="attendanceHistory"></div></div>
     </section>
   </main>
 </div>
@@ -251,6 +268,32 @@ async function loadAdmin() {
       <button class="btn-link" onclick="delEmp(${x.id}, ${esc(JSON.stringify(x.name))})">Remove</button></div>`).join('')
     : empty('No employees yet. Add the first one.');
 }
+async function loadAttendance() {
+  const [emps, records] = await Promise.all([api('/api/employees'), api('/api/attendance')]);
+  const today = new Date().toISOString().slice(0, 10);
+  const marked = new Set(records.filter(r => String(r.date).slice(0, 10) === today).map(r => r.employeeId));
+  const count = emps.filter(emp => marked.has(emp.id)).length;
+  $('attendanceSub').textContent = `${count} of ${emps.length} employees marked present · updates automatically`;
+  $('attendanceRows').innerHTML = emps.length ? emps.map(emp => {
+    const present = marked.has(emp.id);
+    return `<div class="row"><div class="av c${emp.id % 5}">${esc(emp.name[0].toUpperCase())}</div>
+      <div class="info"><b>${esc(emp.name)}</b><span class="meta">${present ? 'Attendance marked for today' : 'Not marked yet'}</span></div>
+      <span class="stamp ${present ? 's-ok' : 's-wait pending'}">${present ? 'Present' : 'Pending'}</span></div>`;
+  }).join('') : empty('No employees to show attendance for.');
+}
+async function loadEmployeeAttendance() {
+  const records = await api('/api/attendance');
+  const today = new Date().toISOString().slice(0, 10);
+  const todayRecord = records.find(r => String(r.date).slice(0, 10) === today);
+  $('attendanceToday').textContent = todayRecord ? 'You are marked present today.' : 'You have not marked attendance today.';
+  $('markAttendance').disabled = Boolean(todayRecord);
+  $('markAttendance').textContent = todayRecord ? 'Attendance marked' : 'Mark attendance';
+  $('attendanceHistorySub').textContent = records.length ? plural(records.length, 'day marked') : 'No attendance records yet';
+  $('attendanceHistory').innerHTML = records.length ? records.map(record => `<div class="row">
+    <div class="av ico">${ico('cal')}</div><div class="info"><b>${dl(record.date, true)}</b>
+    <span class="meta">Present</span></div><span class="stamp s-ok">Marked</span></div>`).join('')
+    : empty('Your marked attendance will appear here.');
+}
 async function decide(id, status) {
   try { await api('/api/leaves/' + id, 'PUT', { status }); S.stamped = id; await loadAdmin(); S.stamped = null;
     toast(status === 'APPROVED' ? 'Leave approved' : 'Leave rejected'); } catch (e) { toast(e.message, true); }
@@ -286,23 +329,46 @@ $('leaveForm').addEventListener('submit', async e => {
   try { await api('/api/leaves', 'POST', { fromDate: $('from').value, toDate: $('to').value, reason: $('reason').value });
     e.target.reset(); updateCount(); toast('Request sent to HR'); loadEmp(); } catch (err) { toast(err.message, true); }
 });
+$('markAttendance').addEventListener('click', async () => {
+  try {
+    await api('/api/attendance', 'POST', {});
+    toast('Attendance marked for today');
+    await loadEmployeeAttendance();
+  } catch (err) { toast(err.message, true); }
+});
 
+let attendanceRefresh;
 function render() {
+  clearInterval(attendanceRefresh);
   const on = !!S.token;
   $('authView').hidden = on; $('appView').hidden = !on;
   if (!on) return;
   const admin = S.role === 'ADMIN', first = (S.email || '').split('@')[0] || 'there';
   const nm = admin ? 'HR team' : first[0].toUpperCase() + first.slice(1);
   $('meName').textContent = nm; $('meRole').textContent = admin ? 'HR administrator' : 'Employee'; $('meAv').textContent = nm[0].toUpperCase();
-  const items = admin ? [['requests', 'inbox', 'Leave requests'], ['team', 'team', 'Team']] : [['mine', 'cal', 'My time off']];
-  if (!admin) S.tab = 'mine'; else if (S.tab === 'mine') S.tab = 'requests';
+  const items = admin
+    ? [['requests', 'inbox', 'Leave requests'], ['attendance', 'cal', 'Attendance'], ['team', 'team', 'Team']]
+    : [['mine', 'cal', 'My time off'], ['attendance', 'cal', 'Attendance']];
+  if (!admin && S.tab !== 'attendance') S.tab = 'mine';
+  else if (admin && !['requests', 'attendance', 'team'].includes(S.tab)) S.tab = 'requests';
   $('nav').innerHTML = items.map(([k, i, t]) => `<button ${S.tab === k ? 'aria-current="page"' : ''} onclick="go('${k}')">${ico(i)}${t}</button>`).join('');
-  $('paneRequests').hidden = S.tab !== 'requests'; $('paneTeam').hidden = S.tab !== 'team'; $('paneMine').hidden = S.tab !== 'mine';
+  $('paneRequests').hidden = S.tab !== 'requests'; $('paneTeam').hidden = S.tab !== 'team';
+  $('paneMine').hidden = S.tab !== 'mine'; $('paneAttendance').hidden = admin ? S.tab !== 'attendance' : true;
+  $('paneAttendanceMine').hidden = admin || S.tab !== 'attendance';
   const H = { requests: ['Leave requests', 'Review what is waiting and decide in one click.'],
+              attendance: ['Attendance', admin ? 'See which employees have marked attendance today.' : 'Mark your attendance and review your history.'],
               team: ['Your team', 'Add people so they can sign in and request time off.'],
               mine: ['Hello, ' + nm, 'Ask for time off and see the answer from HR here.'] }[S.tab];
   $('title').textContent = H[0]; $('lede').textContent = H[1]; $('art').innerHTML = admin ? ART.hr : ART.emp;
-  (admin ? loadAdmin() : loadEmp()).catch(e => { if (S.token) toast(e.message, true); });
+  const load = admin ? loadAdmin() : S.tab === 'attendance' ? loadEmployeeAttendance() : loadEmp();
+  load.catch(e => { if (S.token) toast(e.message, true); });
+  if (admin && S.tab === 'attendance') {
+    loadAttendance().catch(e => { if (S.token) toast(e.message, true); });
+    attendanceRefresh = setInterval(() => {
+      if (S.token && S.role === 'ADMIN' && S.tab === 'attendance')
+        loadAttendance().catch(e => toast(e.message, true));
+    }, 30000);
+  }
 }
 render();
 </script></body></html>

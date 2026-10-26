@@ -4,4 +4,9 @@ function leaveDays(from, to) {
   if (isNaN(d) || d < 0) throw new Error('Invalid date range');
   return d + 1;
 }
-module.exports = { leaveDays };
+function utcToday() {
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  return today;
+}
+module.exports = { leaveDays, utcToday };
