@@ -191,6 +191,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 const dl = (s, y) => new Date(s.slice(0, 10) + 'T00:00:00Z')
   .toLocaleDateString('en-GB', { day: 'numeric', month: 'short', ...(y ? { year: 'numeric' } : {}), timeZone: 'UTC' });
+const attendanceTime = s => new Date(s).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
 const span = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5) + 1;
 const ico = n => `<svg class="ic" aria-hidden="true"><use href="#i-${n}"/></svg>`;
 
@@ -271,13 +272,14 @@ async function loadAdmin() {
 async function loadAttendance() {
   const [emps, records] = await Promise.all([api('/api/employees'), api('/api/attendance')]);
   const today = new Date().toISOString().slice(0, 10);
-  const marked = new Set(records.filter(r => String(r.date).slice(0, 10) === today).map(r => r.employeeId));
+  const marked = new Map(records.filter(r => String(r.date).slice(0, 10) === today).map(r => [r.employeeId, r]));
   const count = emps.filter(emp => marked.has(emp.id)).length;
   $('attendanceSub').textContent = `${count} of ${emps.length} employees marked present · updates automatically`;
   $('attendanceRows').innerHTML = emps.length ? emps.map(emp => {
-    const present = marked.has(emp.id);
+    const record = marked.get(emp.id);
+    const present = Boolean(record);
     return `<div class="row"><div class="av c${emp.id % 5}">${esc(emp.name[0].toUpperCase())}</div>
-      <div class="info"><b>${esc(emp.name)}</b><span class="meta">${present ? 'Attendance marked for today' : 'Not marked yet'}</span></div>
+      <div class="info"><b>${esc(emp.name)}</b><span class="meta">${present ? `Marked at ${esc(attendanceTime(record.markedAt))}` : 'Not marked yet'}</span></div>
       <span class="stamp ${present ? 's-ok' : 's-wait pending'}">${present ? 'Present' : 'Pending'}</span></div>`;
   }).join('') : empty('No employees to show attendance for.');
 }
@@ -291,7 +293,7 @@ async function loadEmployeeAttendance() {
   $('attendanceHistorySub').textContent = records.length ? plural(records.length, 'day marked') : 'No attendance records yet';
   $('attendanceHistory').innerHTML = records.length ? records.map(record => `<div class="row">
     <div class="av ico">${ico('cal')}</div><div class="info"><b>${dl(record.date, true)}</b>
-    <span class="meta">Present</span></div><span class="stamp s-ok">Marked</span></div>`).join('')
+    <span class="meta">Marked at ${esc(attendanceTime(record.markedAt))}</span></div><span class="stamp s-ok">Present</span></div>`).join('')
     : empty('Your marked attendance will appear here.');
 }
 async function decide(id, status) {
